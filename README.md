@@ -39,45 +39,43 @@ cargo run --locked -- /tmp/mac-procfs
 ```
 
 In another terminal:
-
 ```sh
-ls /tmp/mac-procfs
-cat /tmp/mac-procfs/meminfo
-cat /tmp/mac-procfs/$$/status
-readlink /tmp/mac-procfs/$$/cwd
-tr '\000' '\n' < /tmp/mac-procfs/$$/cmdline
-ls /tmp/mac-procfs/$$/fd /tmp/mac-procfs/$$/task
-cat /tmp/mac-procfs/$$/maps
-cat /tmp/mac-procfs/diskstats /tmp/mac-procfs/net/dev
-umount /tmp/mac-procfs
+proc=/tmp/mac-procfs
+pid=$$
+
+# Discover system files and running process IDs.
+ls "$proc"
+
+# Read the process name, credentials, memory usage, and thread count.
+cat "$proc/$pid/comm" "$proc/$pid/status"
+
+# Locate its executable and current working directory.
+readlink "$proc/$pid/exe"
+readlink "$proc/$pid/cwd"
+
+# Display one command-line argument per line (the file is NUL-separated).
+tr '\000' '\n' < "$proc/$pid/cmdline"
 ```
 
-The server runs in the foreground; libfuse handles shutdown signals and unmounts.
-Use `--debug` for FUSE request logging. `--allow-root` additionally permits root
-access to the volume.
+Explore open files, threads, and memory mappings:
 
-## Read behavior
+```sh
+# Show descriptor numbers and their file, pipe, socket, or kqueue targets.
+ls -l "$proc/$pid/fd"
 
-A FUSE open handle contains one immutable sample. Offset reads and `fstat` use that
-same sample; reopening collects a fresh one. Directory handles retain a PID
-listing and support continuation offsets. Attribute and entry cache timeouts
-are zero, and the adapter requests direct I/O without keeping cached data.
+# List native thread IDs and show each thread's name.
+for thread in "$proc/$pid"/task/*; do
+    printf '%s: ' "${thread##*/}"
+    cat "$thread/comm"
+done
 
-FSKit's handling of dynamic sizes and caching still needs live validation on
-each supported macOS version. On macOS 26.6.2 with macFUSE 5.5.0, reopening
-process files returns fresh samples, but `stat()` can retain a PID directory's
-metadata after that process exits. Fresh root listings omit exited processes,
-and reopening their files must fail. Zero cache timeouts do not eliminate
-FSKit's separate metadata cache. See the [maintainer's explanation](https://github.com/macfuse/macfuse/issues/1207).
+# Inspect the first mappings, then list only executable regions.
+head -n 15 "$proc/$pid/maps"
+awk '$2 ~ /x/ { print }' "$proc/$pid/maps"
 
-The expanded end-to-end test passed on macOS 26.6.2 / macFUSE 5.5.0 on November 21,
-2026, including checks that no FUSE kernel extension was loaded before or after
-mounting. Immediate disappearance of cached PID metadata remains unsupported.
-FSKit also remaps displayed `stat()` ownership to the mounting user; process
-`status` retains native credential values.
-
-For the pytest E2E suite, setup, and individual case selection, see
-[tests/README.md](tests/README.md).
+# Read cumulative disk bytes attributed to this process.
+cat "$proc/$pid/io"
+```
 
 ## Backend references
 
