@@ -1,0 +1,9 @@
+/target
+/.venv/
+/.pytest_cache/
+__pycache__/
+PLAN.md
+COMPATIBILITY.md
+.idea
+.claude
+.codex
