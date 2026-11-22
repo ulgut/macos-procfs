@@ -1,14 +1,6 @@
 # mac_procfs
 
-A read-only, Linux-style process and system-information filesystem for macOS.
-
-| System files | Per-process entries |
-| --- | --- |
-| `stat`, `meminfo`, `uptime`, `loadavg`, `cpuinfo`, `version`, `mounts`, `diskstats`, `net/dev` | `stat`, `cmdline`, `comm`, `status`, `statm`, `exe`, `cwd`, `environ`, `io`, `maps`, `fd/`, `task/`, `limits` (daemon only) |
-
-Process `stat` has all 52 field positions and a boot-relative start time. `exe`
-and `cwd` are symlinks. See [COMPATIBILITY.md](COMPATIBILITY.md) for supported
-fields, placeholders, approximations, and access behavior.
+A read-only, Linux-style procfs for macOS implemented using macFUSE and FSKit.
 
 Mounting uses **macFUSE's FSKit backend**, which means you don't need install a kernel extension (:)). I'm aware there's a far cleaner native MacOS FSKit integration [option](https://docs.rs/objc2-fs-kit/latest/objc2_fs_kit/) to eliminate the macFUSE backend but that involved either a) disabling SIP (no) or 2) the classic Apple developer licensing fee (also no). 
 
